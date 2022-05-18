@@ -3,10 +3,10 @@ const express = require('express'),
     app = express(),
     port = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use('/uploads', express.static('uploads'));
-app.use(cors());
 
 const { AdmRouter } = require('./routers/masterRouter');
 const { ProdRouter } = require('./routers/productRouter');
@@ -18,14 +18,14 @@ const { WishListRouter } = require('./routers/wishListRouter');
 
 app.use('/admin', AdmRouter);
 app.use('/product', ProdRouter);
-app.use('/params', BannerRouter);
+app.use('/params', BannerRouter)
 app.use('/user', UserRouter)
 app.use('/check_out', CheckOutRouter)
 app.use('/cart', CartRouter)
 app.use('/wishlist', WishListRouter)
 
 app.get('/', (req, res) => {
-    res.send('Welcome to eBanijya');
+    res.send('Welcome to eBanijya API');
 })
 
 app.listen(port, (err) => {

@@ -15,7 +15,7 @@ CheckOutRouter.post('/', async (req, res) => {
     for (let i = 0; i < data.prod_list.length; i++) {
         // let tnx_no = 'TNX' + curr_date + lastId;
         let tnx_no = data.trans_no;
-        console.log(tnx_no);
+        // console.log(tnx_no);
         table_name = 'td_prod_trans';
         fields = '(trans_dt, trans_no, user_id, prod_id, qty, delivery_charge, price, in_out_flag, created_by, created_dt)';
         values = `("${date}", "${tnx_no}", "${data.user_id}", "${data.prod_list[i].id}", "${data.prod_list[i].cartCount}", "${data.delivery_charge}", "${data.prod_list[i].cartCount * data.prod_list[i].offer_price}", "${data.flag}", "${data.user}", "${datetime}")`;
@@ -23,8 +23,23 @@ CheckOutRouter.post('/', async (req, res) => {
         flag = 0;
         insert_res = await F_Insert(table_name, fields, values, whr, flag);
         lastId = parseInt(lastId) + parseInt(1);
+        if (insert_res.suc == 0) {
+            res.send({ suc: insert_res.suc, msg: data.prod_list[i].prod_name + ' is not inserted', err: insert_res.msg });
+            break;
+        }
     }
-    res.send('Success');
+    // data.prod_list.forEach(async dt => {
+    //     let tnx_no = 'TNX' + curr_date + lastId;
+    //     console.log(tnx_no);
+    //     table_name = 'td_prod_trans';
+    //     fields = '(trans_dt, trans_no, user_id, prod_id, qty, delivery_charge, price, in_out_flag, created_by, created_dt)';
+    //     values = `("${date}", "${tnx_no}", "${data.user_id}", "${dt.id}", "${dt.cartCount}", "${data.delivery_charge}", "${dt.cartCount * dt.offer_price}", "${data.flag}", "${data.user}", "${datetime}")`;
+    //     whr = null;
+    //     flag = 0;
+    //     insert_res = await F_Insert(table_name, fields, values, whr, flag);
+    //     lastId = parseInt(lastId) + parseInt(1);
+    // });
+    res.send({ suc: 1, msg: 'Inserted Successfully!!' });
 })
 
 CheckOutRouter.post('/transaction', async (req, res) => {

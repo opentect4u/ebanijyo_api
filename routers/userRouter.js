@@ -4,18 +4,17 @@ const dateFormat = require('dateformat');
 const bcrypt = require('bcrypt');
 const { F_Select, F_Insert, F_Delete } = require('../modules/MasterModule');
 
-////////////////////////////// USER REGISTRATION/UPDATE //////////////////////////////////////
 UserRouter.post('/', async (req, res) => {
     var datetime = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     var data = req.body;
     var table_name = 'md_user',
-        fields = data.id > 0 ? `name = "${data.custName}", email = "${data.email}", phone_no = "${data.phone}", country_id = "${data.country}", city = "${data.city}", state = "${data.state}", zip_code = "${data.zip}", address = "${data.address}", modified_by = "${data.custName}", modified_dt = "${datetime}"` :
+        fields = data.id > 0 ? `name = "${data.custName}", country_id = "${data.country}", city = "${data.city}", state = "${data.state}", zip_code = "${data.zip}", address = "${data.address}", modified_by = "${data.custName}", modified_dt = "${datetime}"` :
             '(name, email, phone_no, country_id, city, state, zip_code, address, created_by, created_dt)',
         values = `("${data.custName}", "${data.email}", "${data.phone}", "${data.country}", "${data.city}", "${data.state}", "${data.zip}", "${data.address}", "${data.custName}", "${datetime}")`,
         whr = `id = ${data.id}`,
         flag = data.id > 0 ? 1 : 0;
     var dt = await F_Insert(table_name, fields, values, whr, flag);
-    if (dt.suc > 0) {
+    if (dt.suc > 0 && data.id <= 0) {
         var pass = bcrypt.hashSync("123", 10);
         var log_table_name = 'md_user_login',
             log_fields = '(user_id, user_name, password, created_by, created_dt)',
@@ -49,13 +48,12 @@ UserRouter.post('/registration', async (req, res) => {
     res.send(dt)
 })
 
-////////////////////////////// USER LOGIN //////////////////////////////////////
 UserRouter.post('/login', async (req, res) => {
     var res_dt = '';
     var data = req.body,
-        table_name = 'md_user_login',
-        select = 'id, user_id, user_name, password',
-        whr = `user_name = "${data.email}"`;
+        table_name = 'md_user_login a, md_user b',
+        select = 'a.id, b.id userId, a.user_name email, a.password, b.name, b.phone_no, b.country_id, b.city, b.state, b.zip_code, b.address',
+        whr = `a.user_id=b.id AND user_name = "${data.email}"`;
     var dt = await F_Select(select, table_name, whr, null);
     if (dt.msg.length > 0) {
         var db_pass = dt.msg[0].password;
@@ -64,17 +62,20 @@ UserRouter.post('/login', async (req, res) => {
             // var userUpdate = await UpdateUserStatus(dt.msg[0].employee_id, data.email, 'L');
             // if (await UpdateUserLog(data.email, status)) {
             res_dt = { suc: 1, msg: dt.msg };
+            res.send(res_dt)
             // } else {
             //     res_dt = { suc: 0, msg: "Something Went Wrong" }
             // }
 
         } else {
             res_dt = { suc: 0, msg: "Please Check Your User ID or Password" };
+            res.send(res_dt)
         }
     } else {
         res_dt = { suc: 0, msg: "User Does Not Exist" }
+        res.send(res_dt)
     }
-    res.send(res_dt)
+    //res.send(res_dt)
 })
 
 UserRouter.get('/details', async (req, res) => {
@@ -92,7 +93,7 @@ UserRouter.get('/orderHistory', async (req, res) => {
         prod = new Array();
     var user_id = data.user_id,
         table_name = 'td_prod_trans',
-        select = 'DISTINCT trans_dt',
+        select = `DISTINCT DATE_FORMAT(trans_dt, '%Y-%m-%d') trans_dt`,
         whr = `user_id = ${user_id} AND in_out_flag = -1`;
     var dt = await F_Select(select, table_name, whr, null);
     if (dt.msg.length > 0) {

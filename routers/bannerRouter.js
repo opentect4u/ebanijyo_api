@@ -45,7 +45,7 @@ BannerRouter.post('/banner', async (req, res) => {
     }
     const file_save = async (id, file_path, param_id, heading, sub_heading, page_url, user, datetime) => {
         var table_name = 'td_banner',
-            file_path_field = file_path ? `img_path = ${file_path}, ` : '',
+            file_path_field = file_path ? `img_path = "${file_path}", ` : '',
             fields = id > 0 ? `${file_path_field} heading = "${heading}", sub_heading = "${sub_heading}", page_url = "${page_url}", modified_by = "${user}", modified_dt = "${datetime}"` :
                 '(param_id, img_path, heading, sub_heading, page_url, created_by, created_dt)',
             values = `("${param_id}", "${file_path}", "${heading}", "${sub_heading}", "${page_url}", "${user}", "${datetime}")`,
@@ -100,8 +100,8 @@ BannerRouter.get('/featured', async (req, res) => {
     var id = req.query.id,
         type = req.query.type,
         table_name = 'md_product a, md_category b, td_product_price c',
-        select = `a.id, b.name cat_name, a.prod_name, c.prod_sp, c.discount, c.offer_price, (SELECT d.img_path FROM td_product_img d WHERE a.id=d.item_id ORDER BY d.id ASC LIMIT 1) as img_path, IF((SELECT e.id FROM td_featured e WHERE a.id=e.product_id) > 0, 'Y', 'N') AS featured`,
-        whr = id > 0 ? `a.cat_id=b.id AND a.id=c.item_id AND a.id = ${id}` : `a.cat_id=b.id AND a.id=c.item_id AND type=${type}`,
+        select = `a.id, b.name cat_name, a.prod_name, c.prod_sp, c.discount, c.offer_price, (SELECT d.img_path FROM td_product_img d WHERE a.id=d.item_id ORDER BY d.id ASC LIMIT 1) as img_path, IF((SELECT e.id FROM td_featured e WHERE a.id=e.product_id AND e.type=${type}) > 0, 'Y', 'N') AS featured`,
+        whr = id > 0 ? `a.cat_id=b.id AND a.id=c.item_id AND a.id = ${id}` : `a.cat_id=b.id AND a.id=c.item_id`,
         order = `ORDER BY a.id DESC`;
     var dt = await F_Select(select, table_name, whr, order);
     res.send(dt);
@@ -132,8 +132,8 @@ BannerRouter.post('/featured', async (req, res) => {
             var chk = await F_Select('count(id) as ct_id', 'td_featured', `product_id=${data.product_id[i].id} AND type=${data.type}`, null)
             if (chk.msg[0].ct_id < 1) {
                 table_name = 'td_featured';
-                fields = '(product_id, created_by, created_dt)';
-                values = `("${data.product_id[i].id}", "${data.user}", "${datetime}")`;
+                fields = '(product_id, type, created_by, created_dt)';
+                values = `("${data.product_id[i].id}", "${data.type}", "${data.user}", "${datetime}")`;
                 whr = null;
                 flag = 0;
                 await F_Insert(table_name, fields, values, whr, flag);
@@ -146,4 +146,4 @@ BannerRouter.post('/featured', async (req, res) => {
     res.send(dt)
 })
 
-module.exports = { BannerRouter };
+module.exports = { BannerRouter };  

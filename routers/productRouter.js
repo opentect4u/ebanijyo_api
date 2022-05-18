@@ -8,7 +8,6 @@ const upload = require('express-fileupload')
 
 ProdRouter.use(upload());
 
-
 ////////////////////////////// PRODUCT MASTER //////////////////////////////////////
 ProdRouter.get('/prod', async (req, res) => {
     // var id = req.query.id,
@@ -85,13 +84,13 @@ ProdRouter.get('/all_prod_list', async (req, res) => {
         min = req.query.min >= 0 ? `AND h.offer_price >= ${req.query.min}` : '',
         max = req.query.max <= 0 ? `AND h.offer_price <= ${req.query.max}` : '',
         range = max + ' ' + min,
-        sort_flag = req.query.sort_flag == 0 ? `, h.offer_price DESC` : (req.query.sort_flag > 0 ? `, h.offer_price ASC` : ''),
+        sort_flag = req.query.sort_flag == 0 ? `h.offer_price DESC, ` : (req.query.sort_flag > 0 ? `h.offer_price ASC, ` : ''),
         select_img = `(SELECT i.img_path FROM td_product_img i WHERE a.id=i.item_id ORDER BY id ASC LIMIT 1)`,
         select_stock = `(SELECT SUM(j.qty + SUM((SELECT IF(h.qty>0, SUM(h.qty*(h.in_out_flag)), 0) FROM td_prod_trans h WHERE a.id=h.prod_id))) FROM md_prod_stock j WHERE j.prod_id=a.id)`,
         table_name = 'md_product a, md_category b, md_sub_category c, td_product_desc d, md_product_type e, md_material f, md_color g, td_product_price h',
-        select = `a.id, b.name cat_name, c.name sub_cat_name, a.prod_name, a.hsn_code, d.prod_code, e.type_name, g.color_name, g.color_code, f.name material_name, d.prod_height, d.prod_width, d.dimention_unit, d.prod_weight, d.prod_vendor, d.prod_history, d.prod_desc, h.prod_cp, h.prod_sp, h.discount, h.offer_price, h.sgst, h.cgst, ${select_img} as img_path, ${select_stock} as stock`,
+        select = `a.id, b.name cat_name, a.cat_id, a.sub_cat_id, c.name sub_cat_name, a.prod_name, a.hsn_code, d.prod_code, e.type_name, g.color_name, g.color_code, f.name material_name, d.prod_height, d.prod_width, d.dimention_unit, d.prod_weight, d.prod_vendor, d.prod_history, d.prod_desc, h.prod_cp, h.prod_sp, h.discount, h.offer_price, h.sgst, h.cgst, ${select_img} as img_path, ${select_stock} as stock`,
         whr = id > 0 ? `a.cat_id=b.id AND a.sub_cat_id=c.id AND a.id=d.item_id AND d.prod_type_id=e.id AND d.prod_color_id=g.id AND d.prod_material_id=f.id AND a.id=h.item_id AND a.id = ${id}` : `a.cat_id=b.id AND a.sub_cat_id=c.id AND a.id=d.item_id AND d.prod_type_id=e.id AND d.prod_color_id=g.id AND d.prod_material_id=f.id AND a.id=h.item_id ${sub_cat_whr} ${cat_id_whr} ${range} ${type_id_whr} ${mat_id_whr}`,
-        order = `ORDER BY a.id DESC ${sort_flag}`;
+        order = `GROUP BY a.id ORDER BY ${sort_flag} a.id DESC`;
     var dt = await F_Select(select, table_name, whr, order);
 
     if (id > 0) {
@@ -259,32 +258,25 @@ ProdRouter.get('/prod_dash', async (req, res) => {
 
 ProdRouter.get('/related_product', async (req, res) => {
     var cat_id = req.query.cat_id,
-        id = req.query.prod_id,
+        id = req.query.id,
+        limit = req.query.limit,
         table_name = `md_product a, md_category b, td_product_price c`,
         select = `a.id, b.name cat_name, a.prod_name, c.prod_sp, c.discount, c.offer_price, (SELECT d.img_path FROM td_product_img d WHERE a.id=d.item_id ORDER BY d.id ASC LIMIT 1) as img_path`,
         whr = `a.cat_id=b.id AND a.id=c.item_id AND a.cat_id=${cat_id} AND a.id!=${id}`,
-        order = 'ORDER BY a.id DESC LIMIT 3';
+        order = `ORDER BY a.id DESC LIMIT ${limit}`;
     var dt = await F_Select(select, table_name, whr, order);
     res.send(dt);
 })
 
 ProdRouter.post('/search', async (req, res) => {
     var name = req.body.name,
+        cat_id = req.body.cat_id,
+        cat_whr = cat_id > 0 ? `AND a.cat_id = ${cat_id}` : '',
+        name_whr = name != '' && name != "null" && name != "undefined" && name.length > 0 ? `AND (a.prod_name LIKE "%${name}%" OR b.name LIKE "%${name}%" OR c.name LIKE "%${name}%" OR d.offer_price LIKE "%${name}%")` : '',
         table_name = `md_product a, md_category b, md_sub_category c, td_product_price d`,
         select = `a.id, a.prod_name, b.name AS cat_name, c.name AS sub_cat_name, d.prod_sp, d.discount, d.offer_price, (SELECT e.img_path FROM td_product_img e WHERE a.id=e.item_id ORDER BY e.id ASC LIMIT 1) as img_path`,
-        whr = `a.cat_id=b.id AND a.sub_cat_id=c.id AND a.id=d.item_id AND (a.prod_name LIKE "%${name}%" OR b.name LIKE "%${name}%" OR c.name LIKE "%${name}%")`,
+        whr = `a.cat_id=b.id AND a.sub_cat_id=c.id AND a.id=d.item_id ${name_whr} ${cat_whr}`,
         order = 'GROUP BY a.id ORDER BY a.prod_name';
-    var dt = await F_Select(select, table_name, whr, order);
-    res.send(dt);
-})
-
-ProdRouter.get('/related_product', async (req, res) => {
-    var cat_id = req.query.cat_id,
-        id = req.query.prod_id,
-        table_name = `md_product a, md_category b, td_product_price c`,
-        select = `a.id, b.name cat_name, a.prod_name, c.prod_sp, c.discount, c.offer_price, (SELECT d.img_path FROM td_product_img d WHERE a.id=d.item_id ORDER BY d.id ASC LIMIT 1) as img_path`,
-        whr = `a.cat_id=b.id AND a.id=c.item_id AND a.cat_id=${cat_id} AND a.id!=${id}`,
-        order = 'ORDER BY a.id DESC LIMIT 3';
     var dt = await F_Select(select, table_name, whr, order);
     res.send(dt);
 })
@@ -303,7 +295,8 @@ ProdRouter.get('/stock_list', async (req, res) => {
 
 ProdRouter.post('/stock_entry', async (req, res) => {
     var datetime = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss"),
-        date = dateFormat(new Date(), "yyyy-mm-dd");
+        date = dateFormat(new Date(), "yyyy-mm-dd"),
+        curr_year = dateFormat(new Date(), "yyyy");
     var data = req.body;
     var year = dateFormat(new Date(), "yyyymmdd") > curr_year + '0401' ? curr_year : curr_year - 1;
     var id = data.prod_id,

@@ -3,7 +3,6 @@ const AdmRouter = express.Router();
 const dateFormat = require('dateformat');
 const { F_Select, F_Insert, F_Delete } = require('../modules/MasterModule');
 
-////////////////////////////// CATEGORY //////////////////////////////////////
 AdmRouter.get('/category', async (req, res) => {
     var id = req.query.id,
         table_name = 'md_category',
@@ -28,21 +27,22 @@ AdmRouter.post('/category', async (req, res) => {
 })
 
 AdmRouter.post('/category_del', async (req, res) => {
+    var datetime = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     var data = req.body;
     var table_name = 'md_category',
         whr = `id = ${data.id}`;
-    console.log(data);
-    var dt = await F_Delete(table_name, whr);
-    res.send(dt);
-})
-///////////////////////////////////// END ////////////////////////////////////
 
-////////////////////////////// SUB CATEGORY //////////////////////////////////
+    var dt = await F_Delete(table_name, whr);
+    res.send(dt)
+})
+
 AdmRouter.get('/sub_category', async (req, res) => {
     var id = req.query.id,
+        cat_id = req.query.cat_id,
         table_name = 'md_sub_category a, md_category b',
         select = 'a.id, b.name cat_name, a.cat_id, a.name',
-        whr = id > 0 ? `a.cat_id=b.id AND a.id = ${id}` : `a.cat_id=b.id`;
+        cat_id_whr = cat_id > 0 ? `AND cat_id = ${cat_id}` : '',
+        whr = id > 0 ? `a.cat_id=b.id AND a.id = ${id} ${cat_id_whr}` : `a.cat_id=b.id ${cat_id_whr}`;
     var dt = await F_Select(select, table_name, whr, null);
     res.send(dt);
 })
@@ -71,7 +71,7 @@ AdmRouter.post('/sub_category_del', async (req, res) => {
 })
 ///////////////////////////////////// END ////////////////////////////////////
 
-////////////////////////////// MATERIAL //////////////////////////////////////
+////////////////////////////// MATERIAL /////////////////////////////
 AdmRouter.get('/material', async (req, res) => {
     var id = req.query.id,
         table_name = 'md_material',
@@ -84,7 +84,7 @@ AdmRouter.get('/material', async (req, res) => {
 AdmRouter.post('/material', async (req, res) => {
     var datetime = dateFormat(new Date(), "yyyy-mm-dd HH:MM:ss");
     var data = req.body;
-    var table_name = 'md_category',
+    var table_name = 'md_material',
         fields = data.id > 0 ? `name = "${data.name}", modified_by = "${data.user}", modified_dt = "${datetime}"` :
             '(name, created_by, created_dt)',
         values = `("${data.name}", "${data.user}", "${datetime}")`,
